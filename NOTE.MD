@@ -22,3 +22,9 @@ python3 -m venv venv
 # 4. Activate it
 source venv/bin/activate
 
+
+
+run the the main py in this 
+
+uvicorn main:app --reload
+
