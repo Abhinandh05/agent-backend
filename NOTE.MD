@@ -22,7 +22,18 @@ python3 -m venv venv
 # 4. Activate it
 source venv/bin/activate
 
+15
 
+in this i created a .env file for the need to store the  screct file into that section 
+
+ then i created the main file called main.py 
+
+ in this inculde the sample section of the server  in this file incudes like api doc file, test file and last normla home route page in this 
+
+
+ in this the doc file incudes how may api is precent in this 
+
+  below code is how to run the main server 
 
 run the the main py in this 
 
