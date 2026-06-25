@@ -39,3 +39,12 @@ run the the main py in this
 
 uvicorn main:app --reload
 
+
+
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=Abhi@123
+DB_HOST=
+DB_PORT=5432
+DB_DIALECT=postgres
+
