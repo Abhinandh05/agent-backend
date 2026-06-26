@@ -54,3 +54,20 @@ OPENAI_API_KEY=sk-put-your-key-here-later
 DEBUG=True
 
 
+
+# new
+DATABASE_URL=postgresql://admin:secret@localhost:5432/ai_business_os
+# JWT Settings
+SECRET_KEY=7df29d5aa1a72a243c4e2753d0ee2a5541726a9e646e318e4b0db8d28b4c188a
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+OPENAI_API_KEY=sk-put-your-key-here-later
+DEBUG=True
+
+#Database
+DB_NAME=postgres
+DB_USER=postgres
+DB_PASSWORD=Abhi@123
+DB_HOST=localhost
+DB_PORT=5432
+DB_DIALECT=postgres
