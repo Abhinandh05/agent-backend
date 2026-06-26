@@ -1,8 +1,3 @@
-"""
-Models package.
-Import all your ORM models here so that Base.metadata picks them up
-when creating tables.
-
-Example:
-    from models.user import User
-"""
+# backend/models/__init__.py
+from .user import User
+from .task import Task
