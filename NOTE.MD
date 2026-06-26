@@ -48,3 +48,9 @@ DB_HOST=
 DB_PORT=5432
 DB_DIALECT=postgres
 
+DATABASE_URL=postgresql://admin:secret@localhost:5432/ai_business_os
+SECRET_KEY=your-super-secret-key-change-this-later
+OPENAI_API_KEY=sk-put-your-key-here-later
+DEBUG=True
+
+
