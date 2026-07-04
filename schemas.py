@@ -11,6 +11,7 @@ from typing import Optional, List
 class UserCreate(BaseModel):
     """Data required to register a new user."""
     name: str
+    second_name: str
     email: EmailStr       # Pydantic validates it looks like a real email
     password: str
 
@@ -19,6 +20,7 @@ class UserResponse(BaseModel):
     """Data returned about a user — NEVER includes the password."""
     id: int
     name: str
+    second_name: Optional[str] = None
     email: str
     is_active: bool
     created_at: datetime
@@ -29,6 +31,7 @@ class UserResponse(BaseModel):
 class UserUpdate(BaseModel):
     """Optional fields to update on a user profile."""
     name: Optional[str] = None
+    second_name: Optional[str] = None
     email: Optional[EmailStr] = None
 
 

@@ -42,6 +42,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # 3. Create the user record
     new_user = User(
         name=user_data.name,
+        second_name=user_data.second_name,
         email=user_data.email,
         hashed_password=hashed      # Store the bcrypt hash, not the password
     )

@@ -31,6 +31,9 @@ def update_my_profile(
     if update_data.name is not None:
         current_user.name = update_data.name
 
+    if update_data.second_name is not None:
+        current_user.second_name = update_data.second_name
+
     if update_data.email is not None:
         # Check new email is not already taken by someone else
         existing = db.query(User).filter(
