@@ -53,6 +53,24 @@ Expected output: chunk count, embedding dimension `384`, then top matching chunk
 pytest tests/test_vectorstore.py -q
 ```
 
+## Day 9 — Document Upload → Parse → Embed → Chroma
+
+Authenticated upload pipeline that feeds Day 8's vector store.
+
+### Install + migrate
+```bash
+pip install pdfplumber python-docx openpyxl
+alembic upgrade head   # revision c3d9e8f1a2b0 → documents table
+```
+
+### API
+- `POST /api/v1/documents/upload` — JWT, ≤10MB, `.pdf/.docx/.xlsx/.csv/.txt`
+- `GET /api/v1/documents` / `GET|DELETE /api/v1/documents/{id}`
+
+Background indexing: `uploaded` → `processing` → `indexed` (or `failed`).
+
+See `DAY_9_DOCUMENT_UPLOAD.md` for curl examples.
+
 ## ML Model — Customer Churn Prediction
 
 Real supervised ML (scikit-learn RandomForest) — separate from the Groq LLM agents.

@@ -93,3 +93,13 @@ def query(
             }
         )
     return matches
+
+
+def delete_by_document_id(document_id: int) -> None:
+    """
+    Remove all Chroma chunks whose metadata.document_id matches.
+
+    Used when a user deletes an uploaded Document row.
+    """
+    collection = get_collection()
+    collection.delete(where={"document_id": int(document_id)})

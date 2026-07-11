@@ -1,8 +1,8 @@
 .env
-alembic.ini
-backend/alembic.ini
 venv/
 chroma_data/
+uploads/*
+!uploads/.gitkeep
 __pycache__/
 *.pyc
 .pytest_cache/

@@ -5,10 +5,10 @@ import os
 from dotenv import load_dotenv
 
 # Import all routers
-from routers import auth, users, tasks, agents, ml
+from routers import auth, users, tasks, agents, ml, documents
 
 # Import models so SQLAlchemy is aware of them
-from models import User, Task
+from models import User, Task, Document
 
 load_dotenv()
 
@@ -36,6 +36,7 @@ app.include_router(users.router, prefix="/api/v1")   # /api/v1/users/...
 app.include_router(tasks.router, prefix="/api/v1")   # /api/v1/tasks/...
 app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
 app.include_router(ml.router, prefix="/api/v1")  # /api/v1/ml/...
+app.include_router(documents.router, prefix="/api/v1", tags=["documents"])
 
 
 @app.get("/", tags=["Health"])

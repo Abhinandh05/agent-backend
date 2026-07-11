@@ -18,6 +18,7 @@ class User(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
     tasks = relationship("Task", back_populates="user")
+    documents = relationship("Document", back_populates="user")
 
     def __repr__(self):
         return f"<User id={self.id} email={self.email}>"
