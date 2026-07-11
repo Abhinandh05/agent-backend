@@ -2,6 +2,19 @@ pytest
 crewai
 langchain-groq
 duckduckgo-search
+chromadb
+sentence-transformers
+langchain-text-splitters
+pandas
+joblib
+matplotlib
+# Keep NumPy 1.x — chromadb 0.4 + langchain 0.1 break on NumPy 2
+numpy>=1.26.4,<2
+scipy>=1.11,<1.14
+scikit-learn>=1.4,<1.6
+# transformers (via sentence-transformers) needs a recent regex;
+# crewai 0.30 pins an older regex but still runs with this.
+regex>=2025.10.22
 alembic==1.18.5
 annotated-doc==0.0.4
 annotated-types==0.7.0

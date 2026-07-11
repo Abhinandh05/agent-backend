@@ -2,3 +2,14 @@
 alembic.ini
 backend/alembic.ini
 venv/
+chroma_data/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Day 12 — churn dataset + trained artifacts (retrain after clone)
+data/telco_churn.csv
+data/*.csv
+ml/models/*.pkl
+ml/models/*.png
+!ml/models/.gitkeep
+!data/.gitkeep

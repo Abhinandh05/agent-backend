@@ -1,5 +1,5 @@
 # backend/schemas.py
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from typing import Optional, List
 
@@ -78,6 +78,15 @@ class TaskResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# ══════════════════════════════════════════════════
+# AGENT SCHEMAS
+# ══════════════════════════════════════════════════
+
+class ResearchRequest(BaseModel):
+    """Body for POST /api/v1/agents/research"""
+    topic: str = Field(..., min_length=3, max_length=500)
 
 
 # ══════════════════════════════════════════════════
