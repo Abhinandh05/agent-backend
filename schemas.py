@@ -89,6 +89,53 @@ class ResearchRequest(BaseModel):
     topic: str = Field(..., min_length=3, max_length=500)
 
 
+class FinanceRequest(BaseModel):
+    """Body for POST /api/v1/agents/finance"""
+    request: str = Field(..., min_length=3, max_length=2000)
+
+
+class CreditRiskRequest(BaseModel):
+    """
+    Body for POST /api/v1/ml/credit-risk.
+
+    Accepts any applicant fields as a free-form dict matching the loan CSV
+    columns (schema varies by Kaggle dataset).
+    """
+    applicant: dict = Field(
+        ...,
+        description="Applicant feature dict matching loan_data.csv columns",
+    )
+
+
+class AnalyticsRequest(BaseModel):
+    """Body for POST /api/v1/agents/analytics"""
+    request: str = Field(..., min_length=3, max_length=2000)
+
+
+class ChurnRequest(BaseModel):
+    """
+    Body for POST /api/v1/ml/churn.
+
+    Free-form customer dict matching telco_churn.csv columns.
+    """
+    customer: dict = Field(
+        ...,
+        description="Customer feature dict matching telco_churn.csv columns",
+    )
+
+
+class SalesForecastRequest(BaseModel):
+    """
+    Body for POST /api/v1/ml/sales-forecast.
+
+    Calendar + optional Category/Region/Segment, or a date field.
+    """
+    features: dict = Field(
+        ...,
+        description="Forecast features: year/month/... or Order Date + Category/Region",
+    )
+
+
 # ══════════════════════════════════════════════════
 # STANDARD API RESPONSE WRAPPER
 # ══════════════════════════════════════════════════

@@ -8,6 +8,7 @@ __pycache__/
 .pytest_cache/
 # Day 12 — churn dataset + trained artifacts (retrain after clone)
 data/telco_churn.csv
+data/loan_data.csv
 data/*.csv
 ml/models/*.pkl
 ml/models/*.png

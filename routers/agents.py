@@ -7,12 +7,12 @@ from starlette.concurrency import run_in_threadpool
 
 from database import get_db
 from models import Task, User
-from schemas import APIResponse, ResearchRequest
+from schemas import APIResponse, ResearchRequest, FinanceRequest, AnalyticsRequest
 from core.dependencies import get_current_active_user
 
 router = APIRouter()
 
-RESEARCH_TIMEOUT_SECONDS = 90
+AGENT_TIMEOUT_SECONDS = 90
 
 
 def _error_response(status_code: int, message: str, error: str) -> JSONResponse:
@@ -36,15 +36,7 @@ async def research_agent(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """
-    Authenticated endpoint that runs the Day 5 Research Agent.
-
-    - Creates a Task row (status=running) before kickoff
-    - Runs sync `run_research()` in a threadpool so the event loop is not blocked
-    - Enforces a 90s timeout (504 on timeout)
-    - Updates the Task to completed/failed when finished
-    """
-    # Lazy import so FastAPI can boot even if CrewAI deps are mid-install
+    """Authenticated Research Agent endpoint."""
     from agents.research_agent import run_research
 
     topic = body.topic.strip()
@@ -68,7 +60,7 @@ async def research_agent(
     try:
         result = await asyncio.wait_for(
             run_in_threadpool(run_research, topic),
-            timeout=RESEARCH_TIMEOUT_SECONDS,
+            timeout=AGENT_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError:
         task.status = "failed"
@@ -97,5 +89,139 @@ async def research_agent(
         success=True,
         data={"result": result, "task_id": task.id},
         message="Research completed",
+        error=None,
+    )
+
+
+@router.post(
+    "/finance",
+    response_model=APIResponse,
+    summary="Run the Finance Agent (LLM + credit-risk tool)",
+)
+async def finance_agent(
+    body: FinanceRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Authenticated Finance Agent — same pattern as /research."""
+    from agents.finance_agent import run_finance_analysis
+
+    request = body.request.strip()
+    if len(request) < 3:
+        return _error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Validation failed",
+            "Request must be at least 3 characters after trimming whitespace.",
+        )
+
+    task = Task(
+        user_id=current_user.id,
+        agent_type="finance",
+        prompt=request,
+        status="running",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    try:
+        result = await asyncio.wait_for(
+            run_in_threadpool(run_finance_analysis, request),
+            timeout=AGENT_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        task.status = "failed"
+        task.result = "Finance analysis timed out after 90 seconds."
+        db.commit()
+        return _error_response(
+            status.HTTP_504_GATEWAY_TIMEOUT,
+            "Finance analysis timed out",
+            "Finance analysis is taking longer than expected — please try again.",
+        )
+    except Exception as exc:
+        task.status = "failed"
+        task.result = str(exc)
+        db.commit()
+        return _error_response(
+            status.HTTP_502_BAD_GATEWAY,
+            "Finance analysis failed",
+            f"Upstream agent error: {exc}",
+        )
+
+    task.status = "completed"
+    task.result = result
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        data={"result": result, "task_id": task.id},
+        message="Finance analysis completed",
+        error=None,
+    )
+
+
+@router.post(
+    "/analytics",
+    response_model=APIResponse,
+    summary="Run the Analytics Agent (LLM + churn + sales-forecast tools)",
+)
+async def analytics_agent(
+    body: AnalyticsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Authenticated Analytics Agent — same pattern as /research and /finance."""
+    from agents.analytics_agent import run_analytics
+
+    request = body.request.strip()
+    if len(request) < 3:
+        return _error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Validation failed",
+            "Request must be at least 3 characters after trimming whitespace.",
+        )
+
+    task = Task(
+        user_id=current_user.id,
+        agent_type="analytics",
+        prompt=request,
+        status="running",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    try:
+        result = await asyncio.wait_for(
+            run_in_threadpool(run_analytics, request),
+            timeout=AGENT_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        task.status = "failed"
+        task.result = "Analytics timed out after 90 seconds."
+        db.commit()
+        return _error_response(
+            status.HTTP_504_GATEWAY_TIMEOUT,
+            "Analytics timed out",
+            "Analytics is taking longer than expected — please try again.",
+        )
+    except Exception as exc:
+        task.status = "failed"
+        task.result = str(exc)
+        db.commit()
+        return _error_response(
+            status.HTTP_502_BAD_GATEWAY,
+            "Analytics failed",
+            f"Upstream agent error: {exc}",
+        )
+
+    task.status = "completed"
+    task.result = result
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        data={"result": result, "task_id": task.id},
+        message="Analytics completed",
         error=None,
     )

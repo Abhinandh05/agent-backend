@@ -95,3 +95,53 @@ pytest tests/test_predict_churn.py -q
 ```
 
 Skips automatically if the `.pkl` has not been trained yet.
+
+## Day 11 — Finance Agent + Credit Risk Model
+
+LLM Finance Agent (Groq) plus a trained loan/credit-risk RandomForest.
+
+### Dataset
+1. Download a free loan dataset from Kaggle, e.g.  
+   https://www.kaggle.com/datasets/altruistdelhite04/loan-prediction-problem-dataset  
+2. Place as `data/loan_data.csv` (gitignored).
+
+### Train + smoke test
+```bash
+python -m ml.train_credit_risk_model
+python -m scripts.test_credit_risk_prediction
+```
+
+### API
+- `POST /api/v1/agents/finance` — LLM agent (JWT)
+- `POST /api/v1/ml/credit-risk` — direct model prediction (JWT, no LLM)
+
+### Frontend
+`/agents/finance` — reuses `AgentChat`.
+
+See `DAY_11_FINANCE_CREDIT_RISK.md` for full details and curl examples.
+
+## Day 12 — Analytics Agent + Sales Forecast + Churn API
+
+LLM Analytics Agent (Groq) with two trained models as tools, plus direct ML endpoints.
+
+### Dataset (sales)
+1. Prefer **Superstore** (simpler columns) from Kaggle:  
+   https://www.kaggle.com/datasets/vivek468/superstore-dataset-final  
+2. Place as `data/sales_data.csv` (gitignored).
+
+### Train + smoke tests
+```bash
+python -m ml.train_sales_forecast_model
+python -m scripts.test_sales_forecast
+python -m scripts.test_churn_prediction
+```
+
+### API
+- `POST /api/v1/agents/analytics` — LLM agent (JWT)
+- `POST /api/v1/ml/churn` — direct churn prediction (JWT, no LLM)
+- `POST /api/v1/ml/sales-forecast` — direct sales forecast (JWT, no LLM)
+
+### Frontend
+`/agents/analytics` — reuses `AgentChat`.
+
+See `DAY_12_ANALYTICS_AGENT.md` for modeling notes and curl examples.
