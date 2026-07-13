@@ -38,13 +38,16 @@ Everything runs **without Docker**: local Python venv, local PostgreSQL, local C
 | Finance Agent + credit-risk ML | ✅ Complete | Day 11 |
 | Analytics Agent + churn + sales ML | ✅ Complete | Day 12 |
 | Coding Agent + local code runner | ✅ Complete | Day 13 |
+| Email Agent + HF tone analysis | ✅ Complete | Day 14 (+ sentiment extension) |
 | Tasks UI page | ❌ Not built | Nav item exists, no `href` |
 | Settings UI page | ❌ Not built | Nav item exists, no `href` |
 | Direct ML forms in frontend | ⚠️ Partial | APIs exist; chat UIs only (no dedicated churn/credit/sales forms) |
 | RAG on Finance / Analytics agents | ⚠️ Not wired | Pattern exists on Research only |
 | Production-grade code sandbox | ❌ Not done | Local subprocess only; not a security jail |
 
-**Verdict:** Core product through **Day 13 is implemented**. Remaining work is polish, extra agent wiring, dedicated ML widgets, and production hardening.
+**Verdict:** Core product through **Day 14 is implemented** (Email Agent +
+HuggingFace tone analysis). Remaining work is polish, extra agent wiring,
+dedicated ML widgets, and production hardening.
 
 ---
 

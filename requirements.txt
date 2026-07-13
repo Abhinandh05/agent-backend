@@ -1,5 +1,6 @@
 pytest
-crewai
+# Pin crewai — unpinned `crewai` + `torch` makes pip backtrack to ancient 0.1.x
+crewai==0.30.11
 langchain-groq
 duckduckgo-search
 chromadb
@@ -11,13 +12,19 @@ matplotlib
 pdfplumber
 python-docx
 openpyxl
+# Day 14 tone analysis — pre-trained HF DistilBERT (inference only).
+# Do NOT put bare `torch` here: PyPI torch pulls a multi-GB CUDA build and can
+# force crewai downgrades. Install CPU torch separately first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+transformers
 # Keep NumPy 1.x — chromadb 0.4 + langchain 0.1 break on NumPy 2
 numpy>=1.26.4,<2
 scipy>=1.11,<1.14
 scikit-learn>=1.4,<1.6
-# transformers (via sentence-transformers) needs a recent regex;
-# crewai 0.30 pins an older regex but still runs with this.
-regex>=2025.10.22
+# Do NOT pin regex here: crewai 0.30.11 requires regex<2024, transformers wants
+# regex>=2025. Putting both in this file makes pip ResolutionImpossible.
+# After `pip install -r requirements.txt`, optionally upgrade regex (crewai still runs):
+#   pip install 'regex>=2025.10.22'
 alembic==1.18.5
 annotated-doc==0.0.4
 annotated-types==0.7.0

@@ -205,3 +205,38 @@ sandbox (Judge0, Piston, E2B).
 `/agents/coding` — reuses `AgentChat` with syntax-highlighted markdown.
 
 See `DAY_13_CODING_AGENT.md` for curl examples and test commands.
+
+## Day 14 — Email Agent + Tone Analysis
+
+LLM Email Agent drafts subject/body; a **pre-trained** HuggingFace DistilBERT
+model checks tone before send. Advisory only — never blocks sending.
+
+### Email Agent — Tone Analysis
+- Model: `distilbert-base-uncased-finetuned-sst-2-english` (HuggingFace, inference only — we did **not** train this)
+- Checks drafted email body for unexpectedly negative tone + confidence
+- If NEGATIVE with confidence > 0.7 → friendly `tone_warning` in the response / amber banner in UI
+- **Never** disables Send; draft/send still succeed if sentiment fails (`sentiment: null`)
+- First use downloads ~260MB once (needs internet); later runs are local/CPU and fast
+
+### Install (important — avoid CUDA torch + crewai downgrade)
+```bash
+source venv/bin/activate
+# 1) CPU torch FIRST (do not `pip install torch` from PyPI — that pulls CUDA + can break crewai)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+# 2) Then the rest (crewai is pinned to 0.30.11 in requirements.txt)
+pip install -r requirements.txt
+# 3) Optional: newer regex for transformers (pip will warn about crewai's pin — ignore it)
+pip install 'regex>=2025.10.22'
+```
+
+### API
+- `POST /api/v1/agents/email` — draft + sentiment (`{ request, recipient_hint?, tone? }`)
+- `POST /api/v1/agents/email/send` — optional SendGrid (`{ to, subject, body }`)
+
+### Frontend
+`/agents/email` — editable To / Subject / Body, tone badge or amber warning, Send.
+
+Optional env: `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL` (drafting works without them).
+
+See `DAY_14_EMAIL_SENTIMENT.md` for curl examples and what was built.
+

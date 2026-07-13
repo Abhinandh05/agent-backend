@@ -117,6 +117,20 @@ class CodingRequest(BaseModel):
     request: str = Field(..., min_length=3, max_length=5000)
 
 
+class EmailRequest(BaseModel):
+    """Body for POST /api/v1/agents/email (draft)."""
+    request: str = Field(..., min_length=3, max_length=5000)
+    recipient_hint: Optional[str] = Field(None, max_length=500)
+    tone: Optional[str] = Field(None, max_length=200)
+
+
+class EmailSendRequest(BaseModel):
+    """Body for POST /api/v1/agents/email/send (optional SendGrid)."""
+    to: EmailStr
+    subject: str = Field(..., min_length=1, max_length=500)
+    body: str = Field(..., min_length=1, max_length=50000)
+
+
 class ExecuteCodeRequest(BaseModel):
     """Body for POST /api/v1/tools/execute-code (no LLM)."""
     code: str = Field(..., min_length=1, max_length=20000)

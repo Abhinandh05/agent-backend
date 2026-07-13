@@ -13,6 +13,8 @@ from schemas import (
     FinanceRequest,
     AnalyticsRequest,
     CodingRequest,
+    EmailRequest,
+    EmailSendRequest,
 )
 from core.dependencies import get_current_active_user
 
@@ -297,5 +299,155 @@ async def coding_agent(
         success=True,
         data={"result": result, "task_id": task.id},
         message="Coding completed",
+        error=None,
+    )
+
+
+@router.post(
+    "/email",
+    response_model=APIResponse,
+    summary="Draft an email (LLM) + optional tone/sentiment analysis",
+)
+async def email_agent(
+    body: EmailRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Authenticated Email Agent — drafts subject/body; never blocks on sentiment."""
+    from agents.email_agent import run_email_draft
+
+    request = body.request.strip()
+    if len(request) < 3:
+        return _error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Validation failed",
+            "Request must be at least 3 characters after trimming whitespace.",
+        )
+
+    task = Task(
+        user_id=current_user.id,
+        agent_type="email",
+        prompt=request,
+        status="running",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    try:
+        draft = await asyncio.wait_for(
+            run_in_threadpool(
+                run_email_draft,
+                request,
+                body.recipient_hint,
+                body.tone,
+            ),
+            timeout=AGENT_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        task.status = "failed"
+        task.result = "Email draft timed out after 90 seconds."
+        db.commit()
+        return _error_response(
+            status.HTTP_504_GATEWAY_TIMEOUT,
+            "Email draft timed out",
+            "Email drafting is taking longer than expected — please try again.",
+        )
+    except Exception as exc:
+        task.status = "failed"
+        task.result = str(exc)
+        db.commit()
+        return _error_response(
+            status.HTTP_502_BAD_GATEWAY,
+            "Email draft failed",
+            f"Upstream agent error: {exc}",
+        )
+
+    task.status = "completed"
+    task.result = draft.get("raw") or draft.get("body")
+    db.commit()
+
+    # Tone check is advisory only — never fail the draft if it errors.
+    sentiment = None
+    try:
+        from services.sentiment_service import analyze_sentiment
+
+        sentiment = await run_in_threadpool(
+            analyze_sentiment, draft.get("body") or ""
+        )
+    except Exception:
+        sentiment = None
+
+    return APIResponse(
+        success=True,
+        data={
+            "subject": draft.get("subject", ""),
+            "body": draft.get("body", ""),
+            "raw": draft.get("raw", ""),
+            "sentiment": sentiment,
+            "task_id": task.id,
+        },
+        message="Email draft completed",
+        error=None,
+    )
+
+
+@router.post(
+    "/email/send",
+    response_model=APIResponse,
+    summary="Send a drafted email via SendGrid (optional)",
+)
+async def email_send(
+    body: EmailSendRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Send the (possibly edited) draft. Sentiment never gates this endpoint."""
+    from services.email_send_service import EmailSendError, send_email
+
+    task = Task(
+        user_id=current_user.id,
+        agent_type="email_send",
+        prompt=f"to={body.to}; subject={body.subject}",
+        status="running",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    try:
+        result = await run_in_threadpool(
+            send_email,
+            str(body.to),
+            body.subject,
+            body.body,
+        )
+    except EmailSendError as exc:
+        task.status = "failed"
+        task.result = str(exc)
+        db.commit()
+        return _error_response(
+            status.HTTP_400_BAD_REQUEST,
+            "Email send failed",
+            str(exc),
+        )
+    except Exception as exc:
+        task.status = "failed"
+        task.result = str(exc)
+        db.commit()
+        return _error_response(
+            status.HTTP_502_BAD_GATEWAY,
+            "Email send failed",
+            f"Upstream send error: {exc}",
+        )
+
+    task.status = "completed"
+    task.result = f"sent to {result.get('to')}"
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        data={**result, "task_id": task.id},
+        message="Email sent",
         error=None,
     )
