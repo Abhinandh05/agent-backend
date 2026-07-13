@@ -200,3 +200,57 @@ def test_list_documents_user_isolation():
     names = [d["filename"] for d in body["data"]["documents"]]
     assert "mine.txt" in names
     assert "theirs.txt" not in names
+
+
+def test_query_unauthenticated():
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/documents/query",
+        json={"question": "What is in my documents?"},
+    )
+    assert response.status_code == 401
+
+
+def test_query_empty_question():
+    app.dependency_overrides[get_current_active_user] = lambda: _user(1)
+    app.dependency_overrides[get_db] = lambda: MagicMock()
+    try:
+        client = TestClient(app)
+        response = client.post(
+            "/api/v1/documents/query",
+            json={"question": ""},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 422
+
+
+def test_query_success_mocked():
+    async def _fake_rag(question, user_id, top_k=5):
+        assert user_id == 1
+        return {
+            "answer": "Revenue grew 12%.",
+            "sources": [
+                {"filename": "earnings.txt", "chunk_preview": "Q3 revenue grew 12%"}
+            ],
+            "chunks_found": 1,
+        }
+
+    app.dependency_overrides[get_current_active_user] = lambda: _user(1)
+    try:
+        with patch("services.rag_service.rag_query", side_effect=_fake_rag):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/documents/query",
+                json={"question": "How did revenue do in Q3?"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["chunks_found"] == 1
+    assert body["data"]["answer"] == "Revenue grew 12%."
+    assert body["data"]["sources"][0]["filename"] == "earnings.txt"

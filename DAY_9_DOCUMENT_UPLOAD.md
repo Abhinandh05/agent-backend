@@ -1,3 +1,4 @@
+
 # Day 9 — Document Upload + Parsing → Vector Store
 
 What was built for Day 9 of the AI Multi-Agent Business Operating System.

@@ -2,6 +2,9 @@
 Analytics Agent — Groq LLM + churn + sales-forecast tools via CrewAI.
 
 Mirrors agents/finance_agent.py / research_agent.py structure.
+
+# Day 10: document_rag_search (tools/rag_tool.py) can be added later the same
+# way Research binds get_rag_tool(user_id=...) from the authenticated request.
 """
 import os
 from crewai import Agent, Task, Crew, Process

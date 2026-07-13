@@ -18,7 +18,7 @@ def main():
     
     print(f"Starting research on topic: {topic}\n")
     try:
-        result = run_research(topic)
+        result = run_research(topic, user_id=1)
         print("\n" + "="*50)
         print("RESEARCH RESULT:")
         print("="*50)

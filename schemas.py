@@ -112,6 +112,16 @@ class AnalyticsRequest(BaseModel):
     request: str = Field(..., min_length=3, max_length=2000)
 
 
+class CodingRequest(BaseModel):
+    """Body for POST /api/v1/agents/coding"""
+    request: str = Field(..., min_length=3, max_length=5000)
+
+
+class ExecuteCodeRequest(BaseModel):
+    """Body for POST /api/v1/tools/execute-code (no LLM)."""
+    code: str = Field(..., min_length=1, max_length=20000)
+
+
 class ChurnRequest(BaseModel):
     """
     Body for POST /api/v1/ml/churn.
@@ -134,6 +144,11 @@ class SalesForecastRequest(BaseModel):
         ...,
         description="Forecast features: year/month/... or Order Date + Category/Region",
     )
+
+
+class DocumentQueryRequest(BaseModel):
+    """Body for POST /api/v1/documents/query (RAG)."""
+    question: str = Field(..., min_length=3, max_length=2000)
 
 
 # ══════════════════════════════════════════════════

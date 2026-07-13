@@ -2,13 +2,18 @@
 Finance Agent — Groq LLM + trained credit-risk tool via CrewAI.
 
 Mirrors agents/research_agent.py structure.
+
+# Day 10: document RAG tool (tools/rag_tool.py) can be added here later the
+# same way Research does — bind get_rag_tool(user_id=...) from the request.
+# Not wired today to keep Finance focused on credit-risk.
 """
 import os
 from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
 from tools.credit_risk_tool import get_credit_risk_tool
 
-# TODO: integrate RAG (services/rag_service.py) once Days 9-10 document upload exist.
+# TODO: integrate RAG (services/rag_service.py) once Days 9–10 document upload exist.
+# Days 9–10 now exist — see research_agent.py for the pattern; optional follow-up.
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 

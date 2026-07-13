@@ -1,6 +1,7 @@
-# backend/routers/documents.py — upload → parse → embed → Chroma (Day 9)
+# backend/routers/documents.py — upload → parse → embed → Chroma (Day 9) + RAG query (Day 10)
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
 
@@ -18,7 +19,7 @@ from sqlalchemy.orm import Session
 from core.dependencies import get_current_active_user
 from database import get_db
 from models import Document, User
-from schemas import APIResponse
+from schemas import APIResponse, DocumentQueryRequest
 from services.document_service import SUPPORTED_EXTENSIONS, process_document_job
 from vectorstore.client import delete_by_document_id
 
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+RAG_TIMEOUT_SECONDS = 60
 
 
 def _error_response(status_code: int, message: str, error: str) -> JSONResponse:
@@ -112,6 +114,55 @@ async def upload_document(
             "status": doc.status,
         },
         message="File uploaded; processing started in the background.",
+        error=None,
+    )
+
+
+@router.post(
+    "/query",
+    response_model=APIResponse,
+    summary="RAG query over the current user's indexed documents",
+)
+async def query_documents(
+    body: DocumentQueryRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Ask a question against this user's Chroma chunks only (user_id filter).
+    Defined before /{document_id} so path matching stays unambiguous.
+    """
+    from services.rag_service import rag_query
+
+    question = body.question.strip()
+    if len(question) < 3:
+        return _error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Validation failed",
+            "Question must be at least 3 characters after trimming whitespace.",
+        )
+
+    try:
+        result = await asyncio.wait_for(
+            rag_query(question, user_id=current_user.id, top_k=5),
+            timeout=RAG_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        return _error_response(
+            status.HTTP_504_GATEWAY_TIMEOUT,
+            "Query timed out",
+            "Document query is taking longer than expected — please try again.",
+        )
+    except Exception as exc:
+        return _error_response(
+            status.HTTP_502_BAD_GATEWAY,
+            "Query failed",
+            f"Upstream RAG error: {exc}",
+        )
+
+    return APIResponse(
+        success=True,
+        data=result,
+        message="RAG query completed",
         error=None,
     )
 

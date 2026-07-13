@@ -71,6 +71,19 @@ Background indexing: `uploaded` → `processing` → `indexed` (or `failed`).
 
 See `DAY_9_DOCUMENT_UPLOAD.md` for curl examples.
 
+## Day 10 — RAG Query Pipeline
+
+Ask questions over your indexed documents (Chroma + Groq), with source citations.
+Research Agent also gets a `document_rag_search` tool bound to the JWT user.
+
+### API
+- `POST /api/v1/documents/query` — `{ "question": "..." }` (JWT)
+
+### Frontend
+`/documents` — upload, list with status badges, ask + show sources.
+
+See `DAY_10_RAG_QUERY.md` for curl examples and security notes.
+
 ## ML Model — Customer Churn Prediction
 
 Real supervised ML (scikit-learn RandomForest) — separate from the Groq LLM agents.
@@ -163,3 +176,32 @@ python -m scripts.test_churn_prediction
 `/agents/analytics` — reuses `AgentChat`.
 
 See `DAY_12_ANALYTICS_AGENT.md` for modeling notes and curl examples.
+
+## Day 13 — Coding Agent & Sandbox Limitations
+
+LLM Coding Agent (Groq) plus a **beginner-safe** local Python runner
+(`subprocess` + temp directory + timeout). **No Docker.**
+
+### What protection exists
+- Separate OS process (crash of the child does not take down the API process)
+- Hard wall-clock timeout (default 10s) against infinite loops
+- Scratch files live in a temp dir that is deleted after the run
+
+### What does **not** exist (do not oversell this)
+- No filesystem jail beyond “please don’t” in the LLM prompt
+- No network blocking (`subprocess` will not stop `urllib` / sockets)
+- No memory / CPU cgroup limits
+- Soft prompt guardrails only against `os.system`, deletes, etc.
+
+This is safe against **accidental** bugs (hangs), **not** against a determined
+attacker. Production next step: Docker / gVisor / Firecracker, or a hosted
+sandbox (Judge0, Piston, E2B).
+
+### API
+- `POST /api/v1/agents/coding` — LLM agent (JWT, 120s timeout, `agent_type='coding'`)
+- `POST /api/v1/tools/execute-code` — direct sandbox run, no LLM (JWT)
+
+### Frontend
+`/agents/coding` — reuses `AgentChat` with syntax-highlighted markdown.
+
+See `DAY_13_CODING_AGENT.md` for curl examples and test commands.
