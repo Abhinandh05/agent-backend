@@ -1,19 +1,25 @@
 # backend/models/task.py
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base
 
+
 class Task(Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        Index("ix_tasks_user_id_created_at", "user_id", "created_at"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     agent_type = Column(String(50), nullable=False)
     prompt = Column(Text, nullable=False)
     result = Column(Text, nullable=True)
     # Manager Agent (Day 16): full plan + step_results JSON for the UI/demo.
     plan_details = Column(Text, nullable=True)
+    # PPT / generated artifacts (Day 15+): path on disk when a file was produced.
+    result_file_path = Column(String(1024), nullable=True)
     status = Column(String(20), default="pending")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),

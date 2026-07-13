@@ -75,6 +75,7 @@ class TaskResponse(BaseModel):
     prompt: str
     result: Optional[str] = None
     plan_details: Optional[str] = None
+    result_file_path: Optional[str] = None
     status: str
     created_at: datetime
 
