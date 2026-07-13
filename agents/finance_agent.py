@@ -1,19 +1,16 @@
 """
-Finance Agent — Groq LLM + trained credit-risk tool via CrewAI.
+Finance Agent — Groq LLM + credit-risk + fraud anomaly tools via CrewAI.
 
 Mirrors agents/research_agent.py structure.
 
 # Day 10: document RAG tool (tools/rag_tool.py) can be added here later the
 # same way Research does — bind get_rag_tool(user_id=...) from the request.
-# Not wired today to keep Finance focused on credit-risk.
 """
 import os
 from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
 from tools.credit_risk_tool import get_credit_risk_tool
-
-# TODO: integrate RAG (services/rag_service.py) once Days 9–10 document upload exist.
-# Days 9–10 now exist — see research_agent.py for the pattern; optional follow-up.
+from tools.fraud_check_tool import get_fraud_check_tool
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
@@ -36,21 +33,24 @@ def build_finance_analyst() -> Agent:
         temperature=0.2,
     )
     credit_tool = get_credit_risk_tool()
+    fraud_tool = get_fraud_check_tool()
 
     return Agent(
         role="Financial Analyst",
         goal=(
             "Analyze financial data and provide clear, accurate financial "
-            "insights and risk assessments"
+            "insights, loan risk assessments, and transaction fraud flags"
         ),
         backstory=(
             "You are a seasoned financial analyst who combines quantitative "
-            "credit models with clear narrative. When the user provides loan "
+            "models with clear narrative. When the user provides loan "
             "applicant details, you call the credit_risk_predictor tool and "
-            "explain the result in plain business language. You also analyze "
-            "ratios, ratios, and write concise investment memos when asked."
+            "explain the result in plain business language. When they provide "
+            "transaction feature vectors (V1..V28, Amount), you call "
+            "fraud_transaction_checker to flag anomalous patterns. You also "
+            "analyze ratios and write concise investment memos when asked."
         ),
-        tools=[credit_tool],
+        tools=[credit_tool, fraud_tool],
         verbose=True,
         llm=groq_llm,
         allow_delegation=False,
@@ -64,12 +64,16 @@ def build_finance_task(request: str) -> Task:
             f"Handle this finance request: '{request}'. "
             "If the request includes loan applicant attributes, call the "
             "credit_risk_predictor tool with a JSON object of those fields, "
-            "then explain Approve/Reject and probability. Otherwise provide "
-            "a clear financial analysis, ratios, or investment memo as asked."
+            "then explain Approve/Reject and probability. If it includes "
+            "transaction features (V1..V28 and Amount), call "
+            "fraud_transaction_checker and explain whether the pattern looks "
+            "anomalous. Otherwise provide a clear financial analysis, ratios, "
+            "or investment memo as asked."
         ),
         expected_output=(
-            "A clear, well-organized financial analysis or credit assessment "
-            "with bullet points and actionable conclusions"
+            "A clear, well-organized financial analysis, credit assessment, "
+            "or fraud-flag explanation with bullet points and actionable "
+            "conclusions"
         ),
         agent=analyst,
     )

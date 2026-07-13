@@ -3,6 +3,10 @@ Email Agent — drafts professional emails via Groq + CrewAI.
 
 Output is structured so the API can split subject/body for the editable UI.
 Sending is handled separately (optional SendGrid) — this module only drafts.
+
+Spam screening (TF-IDF + Naive Bayes) is available as a tool for pasted /
+incoming text the user asks to evaluate. It is *not* meant to gate outgoing
+drafts — use POST /api/v1/ml/spam-check for instant screening without the LLM.
 """
 from __future__ import annotations
 
@@ -12,6 +16,7 @@ from typing import Optional
 
 from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
+from tools.spam_check_tool import get_spam_check_tool
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
@@ -41,20 +46,29 @@ def build_email_writer() -> Agent:
         temperature=0.4,
     )
 
+    # spam_message_classifier: for screening pasted/incoming text when asked —
+    # not for classifying the agent's own drafts (that would be unnatural).
+    spam_tool = get_spam_check_tool()
+
     return Agent(
         role="Business Email Writer",
         goal=(
             "Draft clear, professional business emails with an appropriate "
-            "subject line and body based on the user's brief"
+            "subject line and body based on the user's brief. When the user "
+            "pastes a message and asks if it looks like spam, use the "
+            "spam_message_classifier tool."
         ),
         backstory=(
             "You are an experienced executive assistant who writes polished "
             "business emails. You match tone to the request (formal, friendly, "
             "apologetic, etc.), keep messages concise, and never invent "
             "facts the user did not provide. You always format output exactly "
-            "as instructed so it can be parsed by software."
+            "as instructed so it can be parsed by software. You can also "
+            "screen pasted incoming-style messages for spam-like language "
+            "when explicitly asked — you do not run spam checks on drafts "
+            "you just wrote."
         ),
-        tools=[],
+        tools=[spam_tool],
         verbose=True,
         llm=groq_llm,
         allow_delegation=False,

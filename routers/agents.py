@@ -1,5 +1,6 @@
 # backend/routers/agents.py
 import asyncio
+import json
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
@@ -15,6 +16,7 @@ from schemas import (
     CodingRequest,
     EmailRequest,
     EmailSendRequest,
+    ManagerRequest,
 )
 from core.dependencies import get_current_active_user
 
@@ -22,6 +24,9 @@ router = APIRouter()
 
 AGENT_TIMEOUT_SECONDS = 90
 CODING_TIMEOUT_SECONDS = 120
+# Manager chains multiple specialists (and may include future PPT generation),
+# so this timeout is intentionally much longer than single-agent routes.
+MANAGER_TIMEOUT_SECONDS = 300
 
 
 def _error_response(status_code: int, message: str, error: str) -> JSONResponse:
@@ -449,5 +454,93 @@ async def email_send(
         success=True,
         data={**result, "task_id": task.id},
         message="Email sent",
+        error=None,
+    )
+
+
+@router.post(
+    "/manager",
+    response_model=APIResponse,
+    summary="Run the Manager Agent (plans + delegates to specialists)",
+)
+async def manager_agent(
+    body: ManagerRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Authenticated Manager Agent — Approach B (explicit plan + step execution).
+
+    Timeout is 300s because this endpoint may chain Research → Finance →
+    Analytics → Email (etc.) in one request, far longer than a single agent.
+    """
+    from agents.manager_agent import run_manager_explicit_plan
+
+    request = body.request.strip()
+    if len(request) < 3:
+        return _error_response(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Validation failed",
+            "Request must be at least 3 characters after trimming whitespace.",
+        )
+
+    task = Task(
+        user_id=current_user.id,
+        agent_type="manager",
+        prompt=request,
+        status="running",
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    try:
+        result = await asyncio.wait_for(
+            run_in_threadpool(
+                run_manager_explicit_plan,
+                request,
+                current_user.id,
+            ),
+            timeout=MANAGER_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        task.status = "failed"
+        task.result = "Manager orchestration timed out after 300 seconds."
+        db.commit()
+        return _error_response(
+            status.HTTP_504_GATEWAY_TIMEOUT,
+            "Manager timed out",
+            "Multi-agent orchestration is taking longer than expected — "
+            "try a narrower request or fewer specialists.",
+        )
+    except Exception as exc:
+        task.status = "failed"
+        task.result = str(exc)
+        db.commit()
+        return _error_response(
+            status.HTTP_502_BAD_GATEWAY,
+            "Manager failed",
+            f"Upstream agent error: {exc}",
+        )
+
+    task.status = "completed"
+    task.result = result.get("final_response")
+    task.plan_details = json.dumps(
+        {
+            "plan": result.get("plan"),
+            "step_results": result.get("step_results"),
+        }
+    )
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        data={
+            "plan": result.get("plan"),
+            "step_results": result.get("step_results"),
+            "final_response": result.get("final_response"),
+            "task_id": task.id,
+        },
+        message="Manager orchestration completed",
         error=None,
     )

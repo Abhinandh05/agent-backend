@@ -12,6 +12,8 @@ class Task(Base):
     agent_type = Column(String(50), nullable=False)
     prompt = Column(Text, nullable=False)
     result = Column(Text, nullable=True)
+    # Manager Agent (Day 16): full plan + step_results JSON for the UI/demo.
+    plan_details = Column(Text, nullable=True)
     status = Column(String(20), default="pending")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),

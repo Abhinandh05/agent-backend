@@ -74,6 +74,7 @@ class TaskResponse(BaseModel):
     agent_type: str
     prompt: str
     result: Optional[str] = None
+    plan_details: Optional[str] = None
     status: str
     created_at: datetime
 
@@ -131,6 +132,11 @@ class EmailSendRequest(BaseModel):
     body: str = Field(..., min_length=1, max_length=50000)
 
 
+class ManagerRequest(BaseModel):
+    """Body for POST /api/v1/agents/manager (multi-agent orchestration)."""
+    request: str = Field(..., min_length=3, max_length=8000)
+
+
 class ExecuteCodeRequest(BaseModel):
     """Body for POST /api/v1/tools/execute-code (no LLM)."""
     code: str = Field(..., min_length=1, max_length=20000)
@@ -157,6 +163,44 @@ class SalesForecastRequest(BaseModel):
     features: dict = Field(
         ...,
         description="Forecast features: year/month/... or Order Date + Category/Region",
+    )
+
+
+class CustomerSegmentRequest(BaseModel):
+    """
+    Body for POST /api/v1/ml/customer-segment.
+
+    Numeric mall-customer features for unsupervised K-Means segmentation.
+    """
+    customer: dict = Field(
+        ...,
+        description=(
+            "Customer features: age, annual_income, spending_score "
+            "(aliases like Age / Annual Income (k$) also accepted)"
+        ),
+    )
+
+
+class SpamCheckRequest(BaseModel):
+    """Body for POST /api/v1/ml/spam-check (TF-IDF + Naive Bayes, no LLM)."""
+    text: str = Field(
+        ...,
+        min_length=1,
+        max_length=20000,
+        description="Raw message text to classify as spam or ham",
+    )
+
+
+class FraudCheckRequest(BaseModel):
+    """
+    Body for POST /api/v1/ml/fraud-check (IsolationForest, no LLM).
+
+    Free-form transaction dict matching fraud_transactions.csv features
+    (typically V1..V28 + Amount).
+    """
+    features: dict = Field(
+        ...,
+        description="Transaction feature dict (V1..V28, Amount)",
     )
 
 

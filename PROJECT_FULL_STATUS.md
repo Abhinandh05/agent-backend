@@ -19,7 +19,7 @@ The goal is a **local, multi-agent business platform** where a logged-in user ca
 1. **Research** topics (web search + optional document RAG)
 2. **Upload documents** and **ask questions** over their own files (RAG)
 3. Run **Finance**, **Analytics**, and **Coding** LLM agents
-4. Call **trained ML models** directly (churn, credit risk, sales forecast) without going through an LLM
+4. Call **trained ML models** directly (churn, credit risk, sales forecast, segmentation, spam check, fraud check) without going through an LLM
 
 Everything runs **without Docker**: local Python venv, local PostgreSQL, local Chroma folder, CPU-only embeddings and ML.
 
@@ -37,17 +37,23 @@ Everything runs **without Docker**: local Python venv, local PostgreSQL, local C
 | RAG query (API + Documents UI) | ✅ Complete | Day 10 |
 | Finance Agent + credit-risk ML | ✅ Complete | Day 11 |
 | Analytics Agent + churn + sales ML | ✅ Complete | Day 12 |
+| Customer segmentation (K-Means) | ✅ Complete | Unsupervised; Analytics tool + `/ml/customer-segment` |
+| Spam text classifier (TF-IDF + NB) | ✅ Complete | NLP; Email tool + `/ml/spam-check` |
+| Fraud anomaly (IsolationForest) | ✅ Complete | Unsupervised; Finance tool + `/ml/fraud-check` |
 | Coding Agent + local code runner | ✅ Complete | Day 13 |
 | Email Agent + HF tone analysis | ✅ Complete | Day 14 (+ sentiment extension) |
+| Manager Agent (orchestrator) | ✅ Complete | Day 16 — Approach B primary; Approach A for comparison |
+| PPT Agent | ❌ Not built | Day 15; Manager skips `ppt` steps gracefully |
 | Tasks UI page | ❌ Not built | Nav item exists, no `href` |
 | Settings UI page | ❌ Not built | Nav item exists, no `href` |
 | Direct ML forms in frontend | ⚠️ Partial | APIs exist; chat UIs only (no dedicated churn/credit/sales forms) |
 | RAG on Finance / Analytics agents | ⚠️ Not wired | Pattern exists on Research only |
 | Production-grade code sandbox | ❌ Not done | Local subprocess only; not a security jail |
 
-**Verdict:** Core product through **Day 14 is implemented** (Email Agent +
-HuggingFace tone analysis). Remaining work is polish, extra agent wiring,
-dedicated ML widgets, and production hardening.
+**Verdict:** Core product through **Day 14** (Email + tone) plus **Day 16
+Manager Agent** (multi-agent orchestration) is implemented. Day 15 PPT is
+still pending; Manager skips PPT steps gracefully. Remaining work is polish,
+extra agent wiring, dedicated ML widgets, and production hardening.
 
 ---
 
@@ -132,6 +138,7 @@ dedicated ML widgets, and production hardening.
 | `ml/train_credit_risk_model.py` + `predict_credit_risk.py` | Real RandomForest Approve/Reject scoring |
 | `tools/credit_risk_tool.py` | Agent can call the model |
 | `POST /agents/finance`, `POST /ml/credit-risk` | Chat path + fast direct ML path |
+| (+ later) fraud IsolationForest tool + `/ml/fraud-check` | Anomaly flags on transactions |
 
 **Purpose:** Combine narrative finance advice with numeric credit scoring.
 
@@ -145,6 +152,26 @@ dedicated ML widgets, and production hardening.
 
 **Purpose:** Data-driven insights backed by trained models, not only LLM guesses.
 
+### Customer Segmentation extension — unsupervised K-Means
+| What | Purpose |
+|------|---------|
+| `ml/train_customer_segments.py` / `predict_customer_segment.py` | Train + assign mall-customer segments |
+| `tools/segmentation_tool.py` + Analytics agent wiring | LLM can call the segmenter |
+| `POST /ml/customer-segment` | Direct numeric prediction (no LLM) |
+| Elbow plot + Income/Spending scatter | Interpretable unsupervised visuals |
+
+**Purpose:** Fill the unsupervised gap — discover customer groups with no labels.
+
+### Spam + Fraud ML extension — NLP + anomaly detection
+| What | Purpose |
+|------|---------|
+| `ml/train_spam_classifier.py` / `predict_spam.py` | TF-IDF + MultinomialNB spam/ham |
+| `tools/spam_check_tool.py` + Email agent + `POST /ml/spam-check` | Screen pasted/incoming text |
+| `ml/train_fraud_detector.py` / `predict_fraud.py` | IsolationForest on V1–V28 + Amount |
+| `tools/fraud_check_tool.py` + Finance agent + `POST /ml/fraud-check` | Flag anomalous transactions |
+
+**Purpose:** Complete the ML skillset — text classification (NLP) and unsupervised anomaly detection. See `DAY_SPAM_FRAUD_ML.md`.
+
 ### Day 13 — Coding Agent + sandbox
 | What | Purpose |
 |------|---------|
@@ -154,6 +181,24 @@ dedicated ML widgets, and production hardening.
 
 **Purpose:** Let the agent test code it writes.  
 **Honest limit:** Protects against hangs/crashes, **not** a production security sandbox (no network/filesystem jail).
+
+### Day 14 — Email Agent + tone analysis
+| What | Purpose |
+|------|---------|
+| `agents/email_agent.py` | Draft subject/body via Groq (+ spam tool for pasted text) |
+| `services/sentiment_service.py` | HuggingFace DistilBERT tone check (advisory) |
+| `POST /agents/email`, `/agents/email/send` | Draft + optional SendGrid |
+| (+ later) `POST /ml/spam-check` | Direct TF-IDF spam/ham (no LLM) |
+
+### Day 16 — Manager Agent (orchestrator)
+| What | Purpose |
+|------|---------|
+| `agents/manager_agent.py` | Approach A (CrewAI delegation) + Approach B (explicit plan) |
+| `POST /agents/manager` | Primary = Approach B; 300s timeout; `plan_details` on Task |
+| Frontend `/agents/manager` | Flagship UI: plan + step results + final response |
+
+**Purpose:** One request → plan → specialists → combined answer. Turns siloed agents into a multi-agent system.  
+**Note:** Day 15 PPT not built yet; Manager skips `ppt` steps gracefully.
 
 ---
 
@@ -174,9 +219,12 @@ All protected routes need: `Authorization: Bearer <JWT>`.
 | Method | Endpoint | Status |
 |--------|----------|--------|
 | POST | `/api/v1/agents/research` | ✅ (+ RAG tool) |
-| POST | `/api/v1/agents/finance` | ✅ (+ credit-risk tool) |
-| POST | `/api/v1/agents/analytics` | ✅ (+ churn + sales tools) |
+| POST | `/api/v1/agents/finance` | ✅ (+ credit-risk + fraud tools) |
+| POST | `/api/v1/agents/analytics` | ✅ (+ churn + sales + segmentation tools) |
 | POST | `/api/v1/agents/coding` | ✅ (+ code execution tool) |
+| POST | `/api/v1/agents/email` | ✅ (+ optional sentiment + spam tool) |
+| POST | `/api/v1/agents/email/send` | ✅ (SendGrid optional) |
+| POST | `/api/v1/agents/manager` | ✅ Day 16 — Approach B; 300s timeout |
 
 ### Documents & RAG
 | Method | Endpoint | Status |
@@ -193,6 +241,9 @@ All protected routes need: `Authorization: Bearer <JWT>`.
 | POST | `/api/v1/ml/credit-risk` | ✅ |
 | POST | `/api/v1/ml/churn` | ✅ |
 | POST | `/api/v1/ml/sales-forecast` | ✅ |
+| POST | `/api/v1/ml/customer-segment` | ✅ |
+| POST | `/api/v1/ml/spam-check` | ✅ |
+| POST | `/api/v1/ml/fraud-check` | ✅ |
 
 ### Tools
 | Method | Endpoint | Status |
@@ -242,10 +293,12 @@ Frontend lives in **`../afsuu_Frontend`** (Next.js). It talks to the backend via
 | `/` (Dashboard) | Home + quick actions + shell | ✅ Complete |
 | `components/DashboardShell.jsx` | Shared sidebar + top bar for all app pages | ✅ Complete |
 | `components/AgentChat.jsx` | Reusable chat UI (markdown; coding uses highlight) | ✅ Complete |
+| `/agents/manager` | Manager Agent (plan + steps + final) | ✅ Complete (Day 16) |
 | `/agents/research` | Research Agent chat | ✅ Complete |
 | `/agents/finance` | Finance Agent chat | ✅ Complete |
 | `/agents/analytics` | Analytics Agent chat | ✅ Complete |
 | `/agents/coding` | Coding Agent chat (syntax-highlighted code) | ✅ Complete |
+| `/agents/email` | Email draft + tone + send | ✅ Complete |
 | `/documents` | Upload list + status badges + ask RAG + show sources | ✅ Complete |
 | Tasks (nav) | Intended task history UI | ❌ Placeholder only (no page) |
 | Settings (nav) | Intended settings UI | ❌ Placeholder only (no page) |
@@ -256,10 +309,12 @@ Frontend lives in **`../afsuu_Frontend`** (Next.js). It talks to the backend via
 | Feature | Backend ready? | Frontend ready? |
 |---------|----------------|-----------------|
 | Auth | ✅ | ✅ |
+| Manager Agent | ✅ | ✅ |
 | Research Agent | ✅ | ✅ |
 | Finance Agent | ✅ | ✅ |
 | Analytics Agent | ✅ | ✅ |
 | Coding Agent | ✅ | ✅ |
+| Email Agent | ✅ | ✅ |
 | Documents upload + RAG ask | ✅ | ✅ |
 | Direct credit-risk / churn / sales UI | ✅ | ❌ |
 | Tasks list UI | ✅ API | ❌ |

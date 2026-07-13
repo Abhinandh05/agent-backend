@@ -1,5 +1,5 @@
 """
-Analytics Agent — Groq LLM + churn + sales-forecast tools via CrewAI.
+Analytics Agent — Groq LLM + churn + sales-forecast + segmentation tools via CrewAI.
 
 Mirrors agents/finance_agent.py / research_agent.py structure.
 
@@ -11,6 +11,7 @@ from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
 from tools.churn_tool import get_churn_tool
 from tools.sales_forecast_tool import get_sales_forecast_tool
+from tools.segmentation_tool import get_segmentation_tool
 
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
@@ -34,6 +35,7 @@ def build_analytics_analyst() -> Agent:
     )
     churn_tool = get_churn_tool()
     sales_tool = get_sales_forecast_tool()
+    segment_tool = get_segmentation_tool()
 
     return Agent(
         role="Business Data Analyst",
@@ -47,10 +49,12 @@ def build_analytics_analyst() -> Agent:
             "customer retention or churn risk, call the churn_predictor tool. "
             "When they ask about future sales, revenue, or demand by period / "
             "category / region, call the sales_forecast_predictor tool. "
-            "Always explain model outputs in plain business language and note "
-            "limitations (estimates, not guarantees)."
+            "When they ask which customer segment / persona / cluster someone "
+            "belongs to (age, income, spending score), call "
+            "customer_segment_predictor. Always explain model outputs in plain "
+            "business language and note limitations (estimates, not guarantees)."
         ),
-        tools=[churn_tool, sales_tool],
+        tools=[churn_tool, sales_tool, segment_tool],
         verbose=True,
         llm=groq_llm,
         allow_delegation=False,
@@ -65,8 +69,11 @@ def build_analytics_task(request: str) -> Task:
             "If the request includes customer attributes for churn, call "
             "churn_predictor with a JSON object of those fields. If it asks "
             "for sales / revenue forecasts, call sales_forecast_predictor "
-            "with year/month/quarter/category/region (or a date). Otherwise "
-            "provide a clear data analysis with trends and actionable insights."
+            "with year/month/quarter/category/region (or a date). If it asks "
+            "to segment / cluster a customer by age, income, and spending "
+            "score, call customer_segment_predictor with those three numbers. "
+            "Otherwise provide a clear data analysis with trends and "
+            "actionable insights."
         ),
         expected_output=(
             "A clear, well-organized analytics response with bullet points, "
